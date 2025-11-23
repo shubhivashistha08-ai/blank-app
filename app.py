@@ -11,8 +11,8 @@ import time
 # PAGE CONFIGURATION
 # ============================================
 st.set_page_config(
-    page_title="Nestlé Social Media Analytics",
-    page_icon="🍫",
+    page_title="Oreo Social Media Analytics",
+    page_icon="🍪",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -41,7 +41,7 @@ st.markdown("""
         font-size: 2.5rem;
         font-weight: bold;
         text-align: center;
-        color: #8B4513;
+        color: #0051BA;
         margin-bottom: 5px;
     }
     .sub-header {
@@ -66,17 +66,48 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================
+# OREO PRODUCT & FLAVOR CONFIGURATION
+# ============================================
+OREO_PRODUCTS = [
+    "Oreo Original",
+    "Oreo Double Stuf",
+    "Oreo Thins",
+    "Oreo Golden",
+    "Oreo Mega Stuf",
+    "Oreo Cakesters",
+    "Oreo Bites"
+]
+
+OREO_FLAVORS = [
+    "chocolate", "vanilla", "mint", "strawberry", "birthday cake",
+    "peanut butter", "caramel", "red velvet", "golden", "lemon",
+    "matcha", "coffee", "cinnamon", "pumpkin", "eggnog",
+    "candy corn", "cherry cola", "coconut", "cookies and cream",
+    "dark chocolate", "dulce de leche", "hazelnut", "irish cream",
+    "key lime pie", "maple creme", "orange", "pistachio",
+    "raspberry", "salted caramel", "s'mores", "tiramisu",
+    "turkey stuffing", "watermelon", "winter", "chocolate mint"
+]
+
+# ============================================
 # HELPER FUNCTIONS
 # ============================================
 
 def extract_product_mentions(text, products):
-    """Extract which Nestlé product is mentioned"""
+    """Extract which Oreo product is mentioned"""
     if not isinstance(text, str):
         return "Other"
     text_lower = text.lower()
+    
+    # Check for specific product variants first
     for product in products:
         if product.lower() in text_lower:
             return product
+    
+    # If just "oreo" mentioned without variant
+    if "oreo" in text_lower:
+        return "Oreo Original"
+    
     return "Other"
 
 def extract_flavor_mentions(text, flavors):
@@ -190,17 +221,15 @@ def fetch_youtube_data(query, api_key, max_results=50):
 # ============================================
 # HEADER
 # ============================================
-st.markdown('<p class="main-header">🍫 Nestlé Social Media Analytics</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Real-Time Product & Flavor Tracking</p>', unsafe_allow_html=True)
+st.markdown('<p class="main-header">🍪 Oreo Social Media Analytics</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Real-Time Product & Flavor Trend Tracking</p>', unsafe_allow_html=True)
 
 # ============================================
-# PRODUCT CONFIGURATION
+# BUILD SEARCH QUERY
 # ============================================
-NESTLE_PRODUCTS = ["KitKat", "Maggi", "Nescafe", "Milo", "Smarties", "Nestea", "Toll House"]
-FLAVOR_KEYWORDS = ["chocolate", "vanilla", "strawberry", "coffee", "caramel", "mint", "matcha"]
-
-selected_products = ["KitKat", "Maggi", "Nescafe", "Milo"]  # Default selection
-query = f"Nestle ({' OR '.join(selected_products)})"
+# Search for "Oreo" + specific variants
+selected_products = ["Oreo Double Stuf", "Oreo Thins", "Oreo Golden", "Oreo"]
+query = f"Oreo ({' OR '.join(['Double Stuf', 'Thins', 'Golden', 'Cakesters'])})"
 
 # ============================================
 # CREATE TWO SEPARATE PAGES
@@ -219,8 +248,8 @@ if page == "🐦 Twitter Analytics":
     
     if not twitter_df.empty:
         # Process data
-        twitter_df['product'] = twitter_df['text'].apply(lambda x: extract_product_mentions(x, selected_products))
-        twitter_df['flavors'] = twitter_df['text'].apply(lambda x: extract_flavor_mentions(x, FLAVOR_KEYWORDS))
+        twitter_df['product'] = twitter_df['text'].apply(lambda x: extract_product_mentions(x, OREO_PRODUCTS))
+        twitter_df['flavors'] = twitter_df['text'].apply(lambda x: extract_flavor_mentions(x, OREO_FLAVORS))
         twitter_df['date'] = pd.to_datetime(twitter_df['created_at']).dt.date
         twitter_df['month'] = pd.to_datetime(twitter_df['created_at']).dt.to_period('M')
         
@@ -241,36 +270,40 @@ if page == "🐦 Twitter Analytics":
         with col2:
             unique_products = twitter_df[twitter_df['product'] != 'Other']['product'].nunique()
             st.metric(
-                label="📦 Products Mentioned",
+                label="🍪 Variants Mentioned",
                 value=unique_products
             )
         
         with col3:
-            most_consumed = twitter_df[twitter_df['product'] != 'Other']['product'].value_counts().index[0] if not twitter_df[twitter_df['product'] != 'Other'].empty else "N/A"
+            most_consumed = twitter_df[twitter_df['product'] != 'Other']['product'].value_counts().index[0] if not twitter_df[twitter_df['product'] != 'Other'].empty else "Oreo Original"
             st.metric(
-                label="🏆 Most Consumed",
-                value=most_consumed
+                label="🏆 Most Discussed",
+                value=most_consumed.replace("Oreo ", "")
             )
         
         with col4:
             all_flavors = [flavor for flavors in twitter_df['flavors'].dropna() for flavor in flavors]
-            popular_flavor = pd.Series(all_flavors).value_counts().index[0].capitalize() if all_flavors else "N/A"
+            popular_flavor = pd.Series(all_flavors).value_counts().index[0].capitalize() if all_flavors else "Chocolate"
             st.metric(
-                label="🍫 Popular Flavor",
+                label="🎨 Popular Flavor",
                 value=popular_flavor
             )
         
         st.markdown("---")
         
         # ============================================
-        # PRODUCT TREND OVER TIME (6 MONTHS)
+        # PRODUCT TREND OVER TIME
         # ============================================
         st.markdown("### 📈 Product Trends Over Time")
         
-        # Product dropdown
+        # Product dropdown with better defaults
+        available_products = twitter_df[twitter_df['product'] != 'Other']['product'].unique().tolist()
+        if not available_products:
+            available_products = ["Oreo Original"]
+        
         selected_product_trend = st.selectbox(
             "Select Product to View Trend:",
-            options=selected_products,
+            options=available_products,
             index=0
         )
         
@@ -287,6 +320,7 @@ if page == "🐦 Twitter Analytics":
                 title=f"{selected_product_trend} Mentions Over Time",
                 markers=True
             )
+            fig_trend.update_traces(line_color='#0051BA', marker=dict(size=8))
             fig_trend.update_layout(
                 height=400,
                 xaxis_title="Date",
@@ -300,7 +334,7 @@ if page == "🐦 Twitter Analytics":
         # ============================================
         # PRODUCT COMPARISON
         # ============================================
-        st.markdown("### 🔥 Product Comparison")
+        st.markdown("### 🔥 Product Variant Comparison")
         
         col1, col2 = st.columns(2)
         
@@ -308,6 +342,9 @@ if page == "🐦 Twitter Analytics":
             st.subheader("Product Mentions")
             product_counts = twitter_df[twitter_df['product'] != 'Other']['product'].value_counts().reset_index()
             product_counts.columns = ['Product', 'Mentions']
+            
+            # Clean product names for display
+            product_counts['Product'] = product_counts['Product'].str.replace("Oreo ", "")
             
             fig_bar = px.bar(
                 product_counts,
@@ -327,7 +364,8 @@ if page == "🐦 Twitter Analytics":
                 product_counts,
                 values='Mentions',
                 names='Product',
-                hole=0.4
+                hole=0.4,
+                color_discrete_sequence=px.colors.sequential.Blues
             )
             fig_pie.update_traces(textposition='inside', textinfo='percent+label')
             fig_pie.update_layout(height=400)
@@ -336,7 +374,7 @@ if page == "🐦 Twitter Analytics":
         # ============================================
         # FLAVOR INTELLIGENCE
         # ============================================
-        st.markdown("### 🍫 Flavor Intelligence")
+        st.markdown("### 🎨 Flavor Intelligence")
         
         all_flavors_data = []
         for idx, row in twitter_df.iterrows():
@@ -350,23 +388,44 @@ if page == "🐦 Twitter Analytics":
         flavors_df = pd.DataFrame(all_flavors_data)
         
         if not flavors_df.empty:
-            flavor_counts = flavors_df['flavor'].value_counts().reset_index()
-            flavor_counts.columns = ['Flavor', 'Mentions']
+            col1, col2 = st.columns(2)
             
-            fig_flavors = px.bar(
-                flavor_counts.head(10),
-                x='Flavor',
-                y='Mentions',
-                color='Mentions',
-                color_continuous_scale='Sunset',
-                text='Mentions',
-                title="Most Popular Flavors"
-            )
-            fig_flavors.update_traces(texttemplate='%{text:,}', textposition='outside')
-            fig_flavors.update_layout(height=400, showlegend=False)
-            st.plotly_chart(fig_flavors, use_container_width=True)
+            with col1:
+                flavor_counts = flavors_df['flavor'].value_counts().reset_index()
+                flavor_counts.columns = ['Flavor', 'Mentions']
+                
+                fig_flavors = px.bar(
+                    flavor_counts.head(10),
+                    x='Flavor',
+                    y='Mentions',
+                    color='Mentions',
+                    color_continuous_scale='Sunset',
+                    text='Mentions',
+                    title="Top 10 Most Popular Flavors"
+                )
+                fig_flavors.update_traces(texttemplate='%{text:,}', textposition='outside')
+                fig_flavors.update_layout(height=400, showlegend=False)
+                st.plotly_chart(fig_flavors, use_container_width=True)
+            
+            with col2:
+                # Flavor by product breakdown
+                flavor_product = flavors_df.groupby(['product', 'flavor']).size().reset_index(name='mentions')
+                flavor_product['product'] = flavor_product['product'].str.replace("Oreo ", "")
+                
+                fig_flavor_product = px.sunburst(
+                    flavor_product,
+                    path=['product', 'flavor'],
+                    values='mentions',
+                    title="Flavor Distribution by Product Variant"
+                )
+                fig_flavor_product.update_layout(height=400)
+                st.plotly_chart(fig_flavor_product, use_container_width=True)
         else:
-            st.info("No flavor data detected in current tweets")
+            st.info("🎨 No flavor data detected in current tweets. Try selecting different products or refreshing data.")
+            
+            # Show example flavors users can search for
+            st.markdown("**Popular Oreo Flavors to Look For:**")
+            st.markdown("🍫 Chocolate • 🍦 Vanilla • 🍃 Mint • 🍓 Strawberry • 🎂 Birthday Cake • 🥜 Peanut Butter • 🍮 Caramel • 🧁 Red Velvet • 🎃 Pumpkin • ☕ Coffee")
     
     else:
         st.warning("⚠️ No Twitter data found. Please check API credentials or try again later.")
@@ -383,8 +442,8 @@ elif page == "📺 YouTube Analytics":
         
         # Process YouTube comments
         if not youtube_comments_df.empty:
-            youtube_comments_df['product'] = youtube_comments_df['comment'].apply(lambda x: extract_product_mentions(x, selected_products))
-            youtube_comments_df['flavors'] = youtube_comments_df['comment'].apply(lambda x: extract_flavor_mentions(x, FLAVOR_KEYWORDS))
+            youtube_comments_df['product'] = youtube_comments_df['comment'].apply(lambda x: extract_product_mentions(x, OREO_PRODUCTS))
+            youtube_comments_df['flavors'] = youtube_comments_df['comment'].apply(lambda x: extract_flavor_mentions(x, OREO_FLAVORS))
             youtube_comments_df['date'] = pd.to_datetime(youtube_comments_df['published_at']).dt.date
         
         # ============================================
@@ -405,39 +464,39 @@ elif page == "📺 YouTube Analytics":
             if not youtube_comments_df.empty:
                 unique_products = youtube_comments_df[youtube_comments_df['product'] != 'Other']['product'].nunique()
                 st.metric(
-                    label="📦 Products Mentioned",
+                    label="🍪 Variants Mentioned",
                     value=unique_products
                 )
             else:
-                st.metric(label="📦 Products Mentioned", value="0")
+                st.metric(label="🍪 Variants Mentioned", value="0")
         
         with col3:
             if not youtube_comments_df.empty and not youtube_comments_df[youtube_comments_df['product'] != 'Other'].empty:
                 most_consumed = youtube_comments_df[youtube_comments_df['product'] != 'Other']['product'].value_counts().index[0]
                 st.metric(
                     label="🏆 Most Discussed",
-                    value=most_consumed
+                    value=most_consumed.replace("Oreo ", "")
                 )
             else:
-                st.metric(label="🏆 Most Discussed", value="N/A")
+                st.metric(label="🏆 Most Discussed", value="Original")
         
         with col4:
             if not youtube_comments_df.empty:
                 all_flavors = [flavor for flavors in youtube_comments_df['flavors'].dropna() for flavor in flavors]
-                popular_flavor = pd.Series(all_flavors).value_counts().index[0].capitalize() if all_flavors else "N/A"
+                popular_flavor = pd.Series(all_flavors).value_counts().index[0].capitalize() if all_flavors else "Chocolate"
                 st.metric(
-                    label="🍫 Popular Flavor",
+                    label="🎨 Popular Flavor",
                     value=popular_flavor
                 )
             else:
-                st.metric(label="🍫 Popular Flavor", value="N/A")
+                st.metric(label="🎨 Popular Flavor", value="Chocolate")
         
         st.markdown("---")
         
         # ============================================
         # VIDEO PERFORMANCE
         # ============================================
-        st.markdown("### 🎥 Top Videos by Views")
+        st.markdown("### 🎥 Top Oreo Videos by Views")
         
         top_videos = youtube_videos_df.nlargest(10, 'view_count')
         
@@ -447,7 +506,7 @@ elif page == "📺 YouTube Analytics":
             y='title',
             orientation='h',
             color='view_count',
-            color_continuous_scale='Reds',
+            color_continuous_scale='Blues',
             text='view_count'
         )
         fig_videos.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
@@ -464,7 +523,7 @@ elif page == "📺 YouTube Analytics":
         # PRODUCT MENTIONS IN COMMENTS
         # ============================================
         if not youtube_comments_df.empty:
-            st.markdown("### 📦 Product Mentions in Comments")
+            st.markdown("### 🍪 Product Variant Mentions in Comments")
             
             col1, col2 = st.columns(2)
             
@@ -472,6 +531,7 @@ elif page == "📺 YouTube Analytics":
                 st.subheader("Product Distribution")
                 product_counts = youtube_comments_df[youtube_comments_df['product'] != 'Other']['product'].value_counts().reset_index()
                 product_counts.columns = ['Product', 'Mentions']
+                product_counts['Product'] = product_counts['Product'].str.replace("Oreo ", "")
                 
                 if not product_counts.empty:
                     fig_bar = px.bar(
@@ -479,7 +539,7 @@ elif page == "📺 YouTube Analytics":
                         x='Product',
                         y='Mentions',
                         color='Mentions',
-                        color_continuous_scale='Greens',
+                        color_continuous_scale='Blues',
                         text='Mentions'
                     )
                     fig_bar.update_traces(texttemplate='%{text:,}', textposition='outside')
@@ -493,7 +553,8 @@ elif page == "📺 YouTube Analytics":
                         product_counts,
                         values='Mentions',
                         names='Product',
-                        hole=0.4
+                        hole=0.4,
+                        color_discrete_sequence=px.colors.sequential.Blues
                     )
                     fig_pie.update_traces(textposition='inside', textinfo='percent+label')
                     fig_pie.update_layout(height=400)
@@ -502,7 +563,7 @@ elif page == "📺 YouTube Analytics":
             # ============================================
             # FLAVOR INTELLIGENCE
             # ============================================
-            st.markdown("### 🍫 Flavor Intelligence")
+            st.markdown("### 🎨 Flavor Intelligence")
             
             all_flavors_data = []
             for idx, row in youtube_comments_df.iterrows():
@@ -523,15 +584,17 @@ elif page == "📺 YouTube Analytics":
                     x='Flavor',
                     y='Mentions',
                     color='Mentions',
-                    color_continuous_scale='Purples',
+                    color_continuous_scale='Sunset',
                     text='Mentions',
-                    title="Most Popular Flavors in Comments"
+                    title="Top 10 Most Popular Flavors in Comments"
                 )
                 fig_flavors.update_traces(texttemplate='%{text:,}', textposition='outside')
                 fig_flavors.update_layout(height=400, showlegend=False)
                 st.plotly_chart(fig_flavors, use_container_width=True)
             else:
-                st.info("No flavor data detected in comments")
+                st.info("🎨 No flavor data detected in comments")
+                st.markdown("**Popular Oreo Flavors to Look For:**")
+                st.markdown("🍫 Chocolate • 🍦 Vanilla • 🍃 Mint • 🍓 Strawberry • 🎂 Birthday Cake • 🥜 Peanut Butter • 🍮 Caramel • 🧁 Red Velvet")
     
     else:
         st.warning("⚠️ No YouTube data found. Please check API credentials or try again later.")
@@ -559,4 +622,4 @@ if auto_refresh:
 # FOOTER
 # ============================================
 st.markdown("---")
-st.markdown(f"**📊 Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+st.markdown(f"**🍪 Oreo Social Media Analytics Dashboard | Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
