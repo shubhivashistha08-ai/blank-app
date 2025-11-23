@@ -1,19 +1,26 @@
-# 🎈 Blank app template
+# 🍫 Nestlé Product Demand Intelligence Dashboard
 
-A simple Streamlit app template for you to modify!
+Real-time social media analytics dashboard for tracking product mentions, flavor trends, and temporal demand patterns across Twitter and YouTube.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+## 🎯 Features
 
-### How to run it on your own machine
+- **Real-Time Data Collection**: Twitter API v2 & YouTube Data API v3
+- **Product Demand Tracking**: Monitor mentions of Nestlé products
+- **Flavor Intelligence**: Track trending flavors
+- **Temporal Analytics**: Quarter-over-Quarter & Year-over-Year comparisons
+- **Interactive Visualizations**: Plotly charts with filtering capabilities
+- **Auto-Refresh**: Configurable real-time updates
 
-1. Install the requirements
+## 🚀 Live Demo
 
-   ```
-   $ pip install -r requirements.txt
-   ```
+[View Live Dashboard](https://your-streamlit-app-url.streamlit.app)
 
-2. Run the app
+## 📋 Prerequisites
 
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+- Twitter Developer Account with Bearer Token
+- Google Cloud Project with YouTube Data API enabled
+- Python 3.8+
+
+## 🛠️ Installation
+
+### 1. Clone the repository
