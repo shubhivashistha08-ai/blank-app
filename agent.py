@@ -81,8 +81,9 @@ def fetch_amazon_peanut_data(keyword: str = "high protein peanut butter",
     df["sales_proxy"] = 1_000.0 / df["search_position"].clip(lower=1)
     return df
 
-@tool("get_top_products", return_direct=False)
+@tool
 def get_top_products(n: int = 5) -> str:
+    """Return the top N products by sales_proxy from the latest SerpAPI Amazon search."""
     df = fetch_amazon_peanut_data()
     if df.empty:
         return "No products found from SerpAPI."
@@ -99,8 +100,9 @@ def get_top_products(n: int = 5) -> str:
         )
     return "\n".join(rows)
 
-@tool("simulate_promo", return_direct=False)
+@tool
 def simulate_promo(asin: str, discount_pct: float, is_sponsored: bool) -> str:
+    """Simulate a promotion scenario for a given ASIN using simple heuristics."""
     df = fetch_amazon_peanut_data()
     if df.empty:
         return "No products available to simulate."
@@ -131,8 +133,9 @@ def simulate_promo(asin: str, discount_pct: float, is_sponsored: bool) -> str:
     )
     return explanation
 
-@tool("compare_promo_strategies", return_direct=False)
+@tool
 def compare_promo_strategies(asin: str) -> str:
+    """Compare several promotion strategies for a product and rank them."""
     df = fetch_amazon_peanut_data()
     if df.empty:
         return "No products available to compare."
@@ -174,6 +177,9 @@ def build_agent() -> AgentExecutor:
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
     tools = [get_top_products, simulate_promo, compare_promo_strategies]
 
+    # Bind tools for tool-calling
+    llm_with_tools = llm.bind_tools(tools)
+
     prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -187,5 +193,17 @@ def build_agent() -> AgentExecutor:
         ]
     )
 
-    agent = create_tool_calling_agent(llm, tools, prompt)
+    def _invoke(inputs: dict):
+        messages = prompt.format_messages(
+            input=inputs["input"],
+            agent_scratchpad=[],
+        )
+        return llm_with_tools.invoke(messages)
+
+    class SimpleToolCallingAgent:
+        def invoke(self, inputs: dict):
+            return _invoke(inputs)
+
+    agent = SimpleToolCallingAgent()
     return AgentExecutor(agent=agent, tools=tools, verbose=False)
+
