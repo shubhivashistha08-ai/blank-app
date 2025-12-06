@@ -6,7 +6,6 @@ from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-
 # -------------------------------
 # Load API Keys from Streamlit Secrets
 # -------------------------------
@@ -19,11 +18,10 @@ if not SERPAPI_API_KEY:
 if not OPENAI_API_KEY:
     raise RuntimeError("❌ OPENAI_API_KEY missing in Streamlit secrets.")
 
-
 # -------------------------------
-# SerpAPI Fetch Function (FREE PLAN SAFE)
+# Google Shopping Fetch Function (Amazon Proxy Data)
 # -------------------------------
-def fetch_amazon_peanut_data(
+def fetch_google_shopping_peanut_data(
     keyword: str = "high protein peanut butter",
     max_items: int = 20
 ) -> pd.DataFrame:
@@ -57,16 +55,16 @@ def fetch_amazon_peanut_data(
     results = data.get("shopping_results", [])
 
     if not results:
-        st.warning("⚠️ No shopping results returned by SerpAPI.")
+        st.warning("⚠️ No Google Shopping results returned.")
         return pd.DataFrame()
 
     products = []
 
     for p in results:
-        asin = p.get("product_id")
+        product_id = p.get("product_id")
         title = p.get("title")
 
-        if not asin or not title:
+        if not product_id or not title:
             continue
 
         price = None
@@ -79,12 +77,12 @@ def fetch_amazon_peanut_data(
 
         products.append(
             {
-                "asin": asin,
+                "product_id": product_id,
                 "title": title,
                 "brand": p.get("source"),
-                "category": "Peanut Butter",
+                "category": "Peanut / Nut Butter",
                 "price": price,
-                "list_price": None,  # Google Shopping doesn't provide list price reliably
+                "list_price": None,
                 "rating": rating,
                 "review_count": reviews,
                 "search_position": position,
@@ -100,50 +98,47 @@ def fetch_amazon_peanut_data(
     # -------------------------------
     # Derived Metrics
     # -------------------------------
-    df["discount_pct"] = 0.0  # No list price → safe zero
+    df["discount_pct"] = 0.0
     df["search_position"] = df["search_position"].fillna(1000)
     df["sales_proxy"] = 1_000.0 / df["search_position"].clip(lower=1)
 
     return df
-
 
 # -------------------------------
 # LangChain Tools
 # -------------------------------
 @tool
 def get_top_products(n: int = 5) -> str:
-    """Return the top N products by sales_proxy from the latest SerpAPI Google Shopping search."""
-    df = fetch_amazon_peanut_data()
+    """Return the top N products by sales proxy from Google Shopping."""
+    df = fetch_google_shopping_peanut_data()
 
     if df.empty:
-        return "No products found from SerpAPI."
+        return "No products found from Google Shopping."
 
     df = df.sort_values("sales_proxy", ascending=False).head(int(n))
 
     rows = []
     for _, r in df.iterrows():
         rows.append(
-            f"ASIN {r['asin']} | {r['title']} | brand={r['brand']} | "
-            f"price={r['price']} | discount%={r['discount_pct']:.1f} | "
-            f"sponsored={bool(r['is_sponsored'])} | rating={r['rating']} | "
-            f"reviews={r['review_count']} | search_pos={r['search_position']} | "
-            f"sales_proxy={r['sales_proxy']:.1f}"
+            f"ID {r['product_id']} | {r['title']} | brand={r['brand']} | "
+            f"price={r['price']} | sponsored={bool(r['is_sponsored'])} | "
+            f"rating={r['rating']} | reviews={r['review_count']} | "
+            f"search_pos={r['search_position']} | sales_proxy={r['sales_proxy']:.1f}"
         )
 
     return "\n".join(rows)
 
-
 @tool
-def simulate_promo(asin: str, discount_pct: float, is_sponsored: bool) -> str:
-    """Simulate a promotion scenario for a given ASIN using simple heuristics."""
-    df = fetch_amazon_peanut_data()
+def simulate_promo(product_id: str, discount_pct: float, is_sponsored: bool) -> str:
+    """Simulate a promotion scenario for a product using search visibility heuristics."""
+    df = fetch_google_shopping_peanut_data()
 
     if df.empty:
         return "No products available to simulate."
 
-    row = df[df["asin"] == asin].head(1)
+    row = df[df["product_id"] == product_id].head(1)
     if row.empty:
-        return f"No live product found for ASIN {asin}."
+        return f"No live product found for ID {product_id}."
 
     base = row.iloc[0]
     base_proxy = base["sales_proxy"]
@@ -158,26 +153,25 @@ def simulate_promo(asin: str, discount_pct: float, is_sponsored: bool) -> str:
     change_pct = 100 * (new_proxy - base_proxy) / base_proxy
 
     return (
-        f"Base product: {base['title']} (ASIN {asin})\n"
+        f"Base product: {base['title']} (ID {product_id})\n"
         f"Current: discount={base_discount:.1f}%, sponsored={base_sponsored}, "
         f"sales_proxy≈{base_proxy:.1f}.\n"
         f"Scenario: discount={discount_pct:.1f}%, sponsored={bool(is_sponsored)}.\n"
         f"Estimated new sales_proxy≈{new_proxy:.1f} ({change_pct:+.1f}% vs current).\n"
-        f"This is a directional estimate based on search visibility."
+        f"This is a directional estimate based on Google Shopping visibility."
     )
 
-
 @tool
-def compare_promo_strategies(asin: str) -> str:
-    """Compare several promotion strategies for a product and rank them."""
-    df = fetch_amazon_peanut_data()
+def compare_promo_strategies(product_id: str) -> str:
+    """Compare multiple promotion strategies and rank them."""
+    df = fetch_google_shopping_peanut_data()
 
     if df.empty:
         return "No products available to compare."
 
-    row = df[df["asin"] == asin].head(1)
+    row = df[df["product_id"] == product_id].head(1)
     if row.empty:
-        return f"No live product found for ASIN {asin}."
+        return f"No live product found for ID {product_id}."
 
     base = row.iloc[0]
     base_proxy = base["sales_proxy"]
@@ -204,7 +198,7 @@ def compare_promo_strategies(asin: str) -> str:
 
     scenarios = sorted(scenarios, key=lambda x: x["sales_proxy"], reverse=True)
 
-    lines = [f"Promotion strategy ranking for {base['title']} (ASIN {asin}):"]
+    lines = [f"Promotion strategy ranking for {base['title']} (ID {product_id}):"]
 
     for i, s in enumerate(scenarios, start=1):
         change_pct = 100 * (s["sales_proxy"] - base_proxy) / base_proxy
@@ -215,12 +209,11 @@ def compare_promo_strategies(asin: str) -> str:
 
     return "\n".join(lines)
 
-
 # -------------------------------
 # Build the Agent
 # -------------------------------
 def build_agent():
-    """Return a simple tool-calling chain (prompt + llm_with_tools)."""
+    """Return Google Shopping FMCG Promotion Agent."""
 
     llm = ChatOpenAI(
         model="gpt-4o-mini",
@@ -241,8 +234,8 @@ def build_agent():
             (
                 "system",
                 "You are a retail and marketing analytics assistant focused on FMCG food products. "
-                "Use the tools to fetch live Google Shopping data via SerpAPI, analyze promotions, "
-                "and recommend effective campaigns."
+                "You use Google Shopping market data as a proxy for Amazon demand signals, "
+                "analyze promotions, and recommend effective campaigns."
             ),
             MessagesPlaceholder("agent_scratchpad"),
             ("human", "{input}"),
