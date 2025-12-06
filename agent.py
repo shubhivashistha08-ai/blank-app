@@ -9,7 +9,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 load_dotenv()
 
-SERPAPI_API_KEY = os.getenv("My_APIKey")
+SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 print("SERPAPI_API_KEY present?", bool(SERPAPI_API_KEY))
