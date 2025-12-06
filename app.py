@@ -19,7 +19,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # Show history
-for msg in st._state.messages:
+for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
