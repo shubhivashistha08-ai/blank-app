@@ -187,8 +187,8 @@ def compare_promo_strategies(asin: str) -> str:
 
 def build_agent():
     """Return a simple tool-calling chain (prompt + llm_with_tools)."""
-    if not os.getenv("OPENAI_API_KEY"):
-        raise RuntimeError("Set OPENAI_API_KEY env var for the LLM.")
+    if not OPENAI_API_KEY:
+        raise RuntimeError("Set OPENAI_API_KEY in Streamlit secrets.")
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
     tools = [get_top_products, simulate_promo, compare_promo_strategies]
