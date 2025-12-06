@@ -8,9 +8,13 @@ from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 load_dotenv()
+import streamlit as st
 
-SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+SERPAPI_API_KEY = st.secrets["SERPAPI_API_KEY"]
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+
+#SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
+#OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 print("SERPAPI_API_KEY present?", bool(SERPAPI_API_KEY))
 print("OPENAI_API_KEY present?", bool(OPENAI_API_KEY))
@@ -22,7 +26,7 @@ if not SERPAPI_API_KEY:
 def fetch_amazon_peanut_data(keyword: str = "high protein peanut butter",
                              max_items: int = 20) -> pd.DataFrame:
     params = {
-        "engine": "amazon",
+        "engine": "amazon_search"
         "amazon_domain": "amazon.com",
         "q": keyword,
         "api_key": SERPAPI_API_KEY,
