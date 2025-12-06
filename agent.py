@@ -9,7 +9,6 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 load_dotenv()
 
-# IMPORTANT: use your secret name here
 SERPAPI_API_KEY = os.getenv("My_APIKey")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
