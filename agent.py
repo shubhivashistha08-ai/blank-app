@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-#from langchain.agents import AgentExecutor
 
 load_dotenv()
 
@@ -193,7 +192,6 @@ def build_agent():
         ]
     )
 
-    # Chain: inputs -> prompt -> llm_with_tools
     def chain(inputs: dict):
         messages = prompt.format_messages(
             input=inputs["input"],
@@ -202,19 +200,3 @@ def build_agent():
         return llm_with_tools.invoke(messages)
 
     return chain
-
-
-    def _invoke(inputs: dict):
-        messages = prompt.format_messages(
-            input=inputs["input"],
-            agent_scratchpad=[],
-        )
-        return llm_with_tools.invoke(messages)
-
-    class SimpleToolCallingAgent:
-        def invoke(self, inputs: dict):
-            return _invoke(inputs)
-
-    agent = SimpleToolCallingAgent()
-    return AgentExecutor(agent=agent, tools=tools, verbose=False)
-
