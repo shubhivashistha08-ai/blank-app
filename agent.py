@@ -1,30 +1,33 @@
-import os
 import requests
 import pandas as pd
-from dotenv import load_dotenv
+import streamlit as st
 
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-load_dotenv()
-import streamlit as st
 
+# -------------------------------
+# Load API Keys from Streamlit Secrets
+# -------------------------------
 SERPAPI_API_KEY = st.secrets["SERPAPI_API_KEY"]
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-
-#SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
-#OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 print("SERPAPI_API_KEY present?", bool(SERPAPI_API_KEY))
 print("OPENAI_API_KEY present?", bool(OPENAI_API_KEY))
 
 if not SERPAPI_API_KEY:
-    # do NOT raise here any more, just log; otherwise the app dies before showing UI
-    print("WARNING: My_APIKey (SerpAPI) is missing or empty.")
+    print("WARNING: SERPAPI_API_KEY is missing or empty.")
 
-def fetch_amazon_peanut_data(keyword: str = "high protein peanut butter",
-                             max_items: int = 20) -> pd.DataFrame:
+
+# -------------------------------
+# SerpAPI Fetch Function
+# -------------------------------
+def fetch_amazon_peanut_data(
+    keyword: str = "high protein peanut butter",
+    max_items: int = 20
+) -> pd.DataFrame:
+
     params = {
         "engine": "amazon_search",
         "amazon_domain": "amazon.com",
@@ -32,12 +35,19 @@ def fetch_amazon_peanut_data(keyword: str = "high protein peanut butter",
         "api_key": SERPAPI_API_KEY,
         "num": max_items,
     }
+
     try:
-        resp = requests.get("https://serpapi.com/search.json", params=params, timeout=30)
+        resp = requests.get(
+            "https://serpapi.com/search.json",
+            params=params,
+            timeout=30
+        )
+
         if resp.status_code != 200:
             print("SerpAPI error status:", resp.status_code)
             print("SerpAPI error body:", resp.text[:400])
             return pd.DataFrame()
+
     except requests.RequestException as e:
         print("SerpAPI request failed:", e)
         return pd.DataFrame()
@@ -48,6 +58,7 @@ def fetch_amazon_peanut_data(keyword: str = "high protein peanut butter",
     for p in data.get("organic_results", []):
         asin = p.get("asin")
         title = p.get("title")
+
         price = None
         list_price = None
         rating = p.get("rating")
@@ -87,23 +98,37 @@ def fetch_amazon_peanut_data(keyword: str = "high protein peanut butter",
         return df
 
     df["discount_pct"] = 0.0
-    mask = df["price"].notna() & df["list_price"].notna() & (df["list_price"] > 0)
+    mask = (
+        df["price"].notna()
+        & df["list_price"].notna()
+        & (df["list_price"] > 0)
+    )
+
     df.loc[mask, "discount_pct"] = (
-        100.0 * (df.loc[mask, "list_price"] - df.loc[mask, "price"]) / df.loc[mask, "list_price"]
+        100.0
+        * (df.loc[mask, "list_price"] - df.loc[mask, "price"])
+        / df.loc[mask, "list_price"]
     )
 
     df["search_position"] = df["search_position"].fillna(1000)
     df["sales_proxy"] = 1_000.0 / df["search_position"].clip(lower=1)
+
     return df
 
+
+# -------------------------------
+# LangChain Tools
+# -------------------------------
 @tool
 def get_top_products(n: int = 5) -> str:
     """Return the top N products by sales_proxy from the latest SerpAPI Amazon search."""
     df = fetch_amazon_peanut_data()
+
     if df.empty:
         return "No products found from SerpAPI."
 
     df = df.sort_values("sales_proxy", ascending=False).head(int(n))
+
     rows = []
     for _, r in df.iterrows():
         rows.append(
@@ -113,12 +138,15 @@ def get_top_products(n: int = 5) -> str:
             f"reviews={r['review_count']} | search_pos={r['search_position']} | "
             f"sales_proxy={r['sales_proxy']:.1f}"
         )
+
     return "\n".join(rows)
+
 
 @tool
 def simulate_promo(asin: str, discount_pct: float, is_sponsored: bool) -> str:
     """Simulate a promotion scenario for a given ASIN using simple heuristics."""
     df = fetch_amazon_peanut_data()
+
     if df.empty:
         return "No products available to simulate."
 
@@ -146,12 +174,15 @@ def simulate_promo(asin: str, discount_pct: float, is_sponsored: bool) -> str:
         f"Estimated new sales_proxy≈{new_proxy:.1f} ({change_pct:+.1f}% vs current).\n"
         f"This is a rough heuristic based on search position."
     )
+
     return explanation
+
 
 @tool
 def compare_promo_strategies(asin: str) -> str:
     """Compare several promotion strategies for a product and rank them."""
     df = fetch_amazon_peanut_data()
+
     if df.empty:
         return "No products available to compare."
 
@@ -165,33 +196,56 @@ def compare_promo_strategies(asin: str) -> str:
     base_sponsored = bool(base["is_sponsored"])
 
     scenarios = []
+
     for disc in [base_discount, base_discount + 10, base_discount + 20]:
         for spons in [0, 1]:
             discount_factor = 1.0 + (disc - base_discount) * 0.02
             sponsor_factor = 1.2 if spons and not base_sponsored else 1.0
             sponsor_factor = 0.9 if (not spons and base_sponsored) else sponsor_factor
+
             new_proxy = base_proxy * discount_factor * sponsor_factor
+
             scenarios.append(
-                {"discount": disc, "sponsored": bool(spons), "sales_proxy": new_proxy}
+                {
+                    "discount": disc,
+                    "sponsored": bool(spons),
+                    "sales_proxy": new_proxy
+                }
             )
 
     scenarios = sorted(scenarios, key=lambda x: x["sales_proxy"], reverse=True)
+
     lines = [f"Promotion strategy ranking for {base['title']} (ASIN {asin}):"]
+
     for i, s in enumerate(scenarios, start=1):
         change_pct = 100 * (s["sales_proxy"] - base_proxy) / base_proxy
         lines.append(
             f"{i}. discount={s['discount']:.1f}%, sponsored={s['sponsored']}, "
             f"sales_proxy≈{s['sales_proxy']:.1f} ({change_pct:+.1f}%)."
         )
+
     return "\n".join(lines)
 
+
+# -------------------------------
+# Build the Agent
+# -------------------------------
 def build_agent():
     """Return a simple tool-calling chain (prompt + llm_with_tools)."""
+
     if not OPENAI_API_KEY:
         raise RuntimeError("Set OPENAI_API_KEY in Streamlit secrets.")
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
-    tools = [get_top_products, simulate_promo, compare_promo_strategies]
+    llm = ChatOpenAI(
+        model="gpt-4o-mini",
+        temperature=0.1
+    )
+
+    tools = [
+        get_top_products,
+        simulate_promo,
+        compare_promo_strategies
+    ]
 
     llm_with_tools = llm.bind_tools(tools)
 
@@ -201,7 +255,7 @@ def build_agent():
                 "system",
                 "You are a retail and marketing analytics assistant focused on FMCG food products. "
                 "Use the tools to fetch live Amazon data via SerpAPI, analyze promotions, "
-                "and recommend effective campaigns.",
+                "and recommend effective campaigns."
             ),
             MessagesPlaceholder("agent_scratchpad"),
             ("human", "{input}"),
@@ -211,7 +265,7 @@ def build_agent():
     def chain(inputs: dict):
         messages = prompt.format_messages(
             input=inputs["input"],
-            agent_scratchpad=[],
+            agent_scratchpad=[]
         )
         return llm_with_tools.invoke(messages)
 
