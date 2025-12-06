@@ -170,14 +170,14 @@ def compare_promo_strategies(asin: str) -> str:
         )
     return "\n".join(lines)
 
-def build_agent() -> AgentExecutor:
+def build_agent():
+    """Return a simple tool-calling chain (prompt + llm_with_tools)."""
     if not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("Set OPENAI_API_KEY env var for the LLM.")
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
     tools = [get_top_products, simulate_promo, compare_promo_strategies]
 
-    # Bind tools for tool-calling
     llm_with_tools = llm.bind_tools(tools)
 
     prompt = ChatPromptTemplate.from_messages(
@@ -192,6 +192,17 @@ def build_agent() -> AgentExecutor:
             ("human", "{input}"),
         ]
     )
+
+    # Chain: inputs -> prompt -> llm_with_tools
+    def chain(inputs: dict):
+        messages = prompt.format_messages(
+            input=inputs["input"],
+            agent_scratchpad=[],
+        )
+        return llm_with_tools.invoke(messages)
+
+    return chain
+
 
     def _invoke(inputs: dict):
         messages = prompt.format_messages(
