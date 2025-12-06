@@ -35,7 +35,7 @@ def fetch_amazon_peanut_data(
     params = {
         "engine": "amazon",  # ✅ MOST STABLE ENGINE
         "amazon_domain": "amazon.com",
-        "q": keyword,
+        "search_term": keyword,
         "api_key": SERPAPI_API_KEY,
         "num": max_items,
     }
