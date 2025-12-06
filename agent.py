@@ -27,10 +27,9 @@ def fetch_amazon_peanut_data(keyword: str = "high protein peanut butter",
     }
     try:
         resp = requests.get("https://serpapi.com/search.json", params=params, timeout=30)
-        # If error, just return empty df instead of raising
         if resp.status_code != 200:
-            # Optional: log status and body
-            print("SerpAPI error:", resp.status_code, resp.text[:200])
+            print("SerpAPI error status:", resp.status_code)
+            print("SerpAPI error body:", resp.text[:400])
             return pd.DataFrame()
     except requests.RequestException as e:
         print("SerpAPI request failed:", e)
