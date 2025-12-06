@@ -26,7 +26,7 @@ if not SERPAPI_API_KEY:
 def fetch_amazon_peanut_data(keyword: str = "high protein peanut butter",
                              max_items: int = 20) -> pd.DataFrame:
     params = {
-        "engine": "amazon_search"
+        "engine": "amazon_search",
         "amazon_domain": "amazon.com",
         "q": keyword,
         "api_key": SERPAPI_API_KEY,
