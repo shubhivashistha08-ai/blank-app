@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-
+print("SERPAPI_API_KEY present?", bool(SERPAPI_API_KEY))
+print("OPENAI_API_KEY present?", bool(os.getenv("OPENAI_API_KEY")))
 load_dotenv()
 
 # IMPORTANT: use your secret name here
