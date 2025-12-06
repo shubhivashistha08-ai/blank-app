@@ -4,10 +4,10 @@ import requests
 import pandas as pd
 from dotenv import load_dotenv
 
+from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.agents import create_tool_calling_agent
-from langchain.agents.agent import AgentExecutor
+from langchain.agents import AgentExecutor
 
 load_dotenv()
 
