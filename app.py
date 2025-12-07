@@ -160,38 +160,6 @@ else:
         plt.tight_layout()
         st.pyplot(fig_pie, use_container_width=True)
 
-        
-        # Green & Blue color palette
-        colors_palette = ["#0d7377", "#14b8a6", "#06b6d4", "#22d3ee", "#67e8f9", "#cbd5e1"]
-        
-        wedges, texts, autotexts = ax_pie.pie(
-            brand_share.values,
-            labels=brand_share.index,
-            autopct='%1.1f%%',
-            colors=colors_palette[:len(brand_share)],
-            startangle=90,
-            textprops={'fontsize': 10, 'weight': 'bold'}
-        )
-        
-        # Format text colors
-        for text in texts:
-            text.set_color('white')
-            text.set_fontsize(10)
-            text.set_fontweight('bold')
-        
-        for autotext in autotexts:
-            autotext.set_color('white')
-            autotext.set_fontsize(9)
-            autotext.set_fontweight('bold')
-        
-        # Add value counts to labels
-        for i, (text, wedge) in enumerate(zip(texts, wedges)):
-            label = text.get_text()
-            value = brand_share.values[i]
-            text.set_text(f"{label}\n({int(value)} products)")
-        
-        st.pyplot(fig_pie, use_container_width=True)
-
     # --------- PRODUCT TABLES ---------
     st.markdown("### Top Products")
     
