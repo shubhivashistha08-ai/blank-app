@@ -92,6 +92,10 @@ else:
         ax1.spines['bottom'].set_color('white')
         ax1.grid(axis='y', alpha=0.15, color='white', linestyle='--')
         
+        # Remove x-axis label and numbers
+        ax1.set_xlabel('')
+        ax1.tick_params(axis='x', which='both', length=0, labelbottom=True)
+        
         # Line chart for avg rating (secondary axis) with data labels
         ax2 = ax1.twinx()
         ax2.set_facecolor('#0a0e27')
@@ -110,6 +114,9 @@ else:
         ax2.spines['right'].set_color('#14b8a6')
         ax2.set_ylim([0, 5.5])
         ax2.grid(False)
+        
+        # Remove x-axis label from secondary axis
+        ax2.set_xlabel('')
         
         # Legend at the bottom
         lines1, labels1 = ax1.get_legend_handles_labels()
