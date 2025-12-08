@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,12 +22,30 @@ st.markdown(
 
 st.write(
     "Analyze live Google Shopping market data for peanut butter products. "
-    "See sales estimates, social reach, promotion history, and competitor dynamics to plan winning campaigns."
+    "See brand performance, review trends, and competitive dynamics to plan winning campaigns."
 )
 
-# ------------------------------------------------
+# ================================================
+# Helper Function: Format Large Numbers
+# ================================================
+def format_large_number(num, unit=""):
+    """Format numbers as 4.2M, 1.5B, etc. with unit"""
+    if num is None or pd.isna(num):
+        return "N/A"
+    
+    num = float(num)
+    if abs(num) >= 1e9:
+        return f"{num / 1e9:.1f}B {unit}".strip()
+    elif abs(num) >= 1e6:
+        return f"{num / 1e6:.1f}M {unit}".strip()
+    elif abs(num) >= 1e3:
+        return f"{num / 1e3:.1f}K {unit}".strip()
+    else:
+        return f"{num:.0f} {unit}".strip()
+
+# ================================================
 # Data refresh control
-# ------------------------------------------------
+# ================================================
 if "df" not in st.session_state:
     st.session_state.df = pd.DataFrame()
 
@@ -42,70 +61,66 @@ df = st.session_state.df
 # SECTION 1: MARKET OVERVIEW & KEY KPIs
 # ================================================
 st.markdown("---")
-st.markdown("### 📊 Market Overview & Key Metrics")
+st.markdown("### 📊 Market Overview")
 
 if df.empty:
     st.warning("❌ No data available. Click **Refresh market data** above.")
 else:
-    # SAFE: Check if columns exist before using them
-    total_products = df["product_id"].nunique()
-    
-    # Safe column access with defaults
-    total_est_sales = df["sales_estimate"].sum() if "sales_estimate" in df.columns else df["sales_proxy"].sum()
-    avg_social_reach = df["social_reach_score"].mean() if "social_reach_score" in df.columns else 0
-    avg_campaign_potential = df["campaign_potential"].mean() if "campaign_potential" in df.columns else 0
-    unique_brands = df["brand"].nunique()
-    avg_rating = df["rating"].dropna().mean()
+    # Safe column access
+    total_products = df["product_id"].nunique() if "product_id" in df.columns else 0
+    total_sales_proxy = df["sales_proxy"].sum() if "sales_proxy" in df.columns else 0
+    unique_brands = df["brand"].nunique() if "brand" in df.columns else 0
+    avg_rating = df["rating"].dropna().mean() if "rating" in df.columns else 0
+    avg_reviews = df["review_count"].dropna().mean() if "review_count" in df.columns else 0
 
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("🛍️ Products", total_products)
-    col2.metric("📈 Total Est. Sales", f"{int(total_est_sales):,} units/mo" if total_est_sales > 0 else "N/A")
-    col3.metric("📱 Avg Social Reach", f"{avg_social_reach:.0f}/100" if avg_social_reach > 0 else "N/A")
-    col4.metric("🚀 Campaign Potential", f"{avg_campaign_potential:.0f}%" if avg_campaign_potential > 0 else "N/A")
-    col5.metric("⭐ Avg Rating", f"{avg_rating:.2f}" if pd.notna(avg_rating) else "N/A")
-    col6.metric("🏢 Brands", unique_brands)
+    col2.metric("📈 Total Units Proxy", format_large_number(total_sales_proxy, "units"))
+    col3.metric("⭐ Avg Rating", f"{avg_rating:.2f}" if avg_rating > 0 else "N/A")
+    col4.metric("💬 Avg Reviews", f"{avg_reviews:.0f}" if avg_reviews > 0 else "N/A")
+    col5.metric("🏢 Brands", unique_brands)
 
     # ================================================
     # SECTION 2: MARKET ANALYSIS CHARTS
     # ================================================
     st.markdown("---")
-    st.markdown("### 📉 Market Analysis")
+    st.markdown("### 📊 Brand Analysis")
 
-    col_brand_sales, col_social_reach = st.columns(2)
+    col_brand_sales, col_brand_pie = st.columns(2)
 
-    # LEFT: Brand Sales & Rating Analysis
+    # LEFT: Brand Sales & Rating (Dark background)
     with col_brand_sales:
-        st.markdown("#### 📈 Brand Sales Estimate & Quality")
+        st.markdown("#### 📈 Top Brands - Sales & Quality")
 
         brand_stats = df.groupby("brand").agg({
-            "sales_estimate" if "sales_estimate" in df.columns else "sales_proxy": "sum",
+            "sales_proxy": "sum",
             "rating": "mean"
         }).rename(columns={
-            "sales_estimate" if "sales_estimate" in df.columns else "sales_proxy": "total_sales",
+            "sales_proxy": "total_sales",
             "rating": "avg_rating"
         }).sort_values("total_sales", ascending=False).head(10)
 
         fig, ax1 = plt.subplots(figsize=(8, 5))
-        fig.patch.set_facecolor('#0a0e27')
-        ax1.set_facecolor('#0a0e27')
+        fig.patch.set_facecolor('#1a1a2e')  # Dark background
+        ax1.set_facecolor('#1a1a2e')  # Dark background
 
         # Bar for sales
         bars = ax1.bar(
             range(len(brand_stats)),
             brand_stats["total_sales"],
             color="#0d7377",
-            alpha=0.8,
-            label="Est. Monthly Sales",
+            alpha=0.85,
+            label="Sales Proxy (Units)",
             edgecolor='white',
             linewidth=1.5
         )
 
         # Value labels on bars
         for i, val in enumerate(brand_stats["total_sales"]):
-            ax1.text(i, val + 20, f"{int(val)}", ha='center', va='bottom',
+            ax1.text(i, val + 50, f"{format_large_number(val)}", ha='center', va='bottom',
                     color='white', fontweight='bold', fontsize=8)
 
-        ax1.set_ylabel("Est. Monthly Sales (units)", color="white", fontsize=10, fontweight="bold")
+        ax1.set_ylabel("Sales Proxy (Units)", color="white", fontsize=10, fontweight="bold")
         ax1.tick_params(axis='y', labelcolor="white", labelsize=8)
         ax1.set_xticks(range(len(brand_stats)))
         ax1.set_xticklabels(brand_stats.index, rotation=45, ha="right", color="white", fontsize=8)
@@ -117,7 +132,7 @@ else:
 
         # Line for rating on secondary axis
         ax2 = ax1.twinx()
-        ax2.set_facecolor('#0a0e27')
+        ax2.set_facecolor('#1a1a2e')
         line = ax2.plot(
             range(len(brand_stats)),
             brand_stats["avg_rating"],
@@ -141,111 +156,84 @@ else:
         lines1, labels1 = ax1.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
         ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right',
-                  facecolor='#0a0e27', edgecolor='white', labelcolor='white', fontsize=8)
+                  facecolor='#1a1a2e', edgecolor='white', labelcolor='white', fontsize=8)
 
         plt.tight_layout()
         st.pyplot(fig, use_container_width=True)
 
-    # RIGHT: Social Reach Distribution (if available)
-    with col_social_reach:
-        if "social_reach_score" in df.columns and "campaign_potential" in df.columns:
-            st.markdown("#### 📱 Social Reach vs Campaign Potential")
+    # RIGHT: Brand Market Share Pie (Top 5 + Others)
+    with col_brand_pie:
+        st.markdown("#### 🥧 Brand Market Share (Top 5)")
 
-            fig, ax = plt.subplots(figsize=(8, 5))
-            fig.patch.set_facecolor('#0a0e27')
-            ax.set_facecolor('#0a0e27')
+        brand_share = df["brand"].value_counts().head(5)
+        other_count = df["brand"].value_counts().iloc[5:].sum() if len(df["brand"].value_counts()) > 5 else 0
 
-            scatter = ax.scatter(
-                df["social_reach_score"],
-                df["campaign_potential"],
-                s=df["sales_estimate"].fillna(100) / 2 if "sales_estimate" in df.columns else 50,
-                c=df["rating"].fillna(3),
-                cmap="viridis",
-                alpha=0.6,
-                edgecolors='white',
-                linewidth=0.5
-            )
+        if other_count > 0:
+            brand_share = pd.concat([brand_share, pd.Series({"Others": other_count})])
 
-            ax.set_xlabel("Social Reach Score (0-100)", color="white", fontsize=10, fontweight="bold")
-            ax.set_ylabel("Campaign Potential (%)", color="white", fontsize=10, fontweight="bold")
-            ax.tick_params(axis='both', labelcolor="white", labelsize=8)
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.spines['left'].set_color('white')
-            ax.spines['bottom'].set_color('white')
-            ax.grid(alpha=0.15, color='white', linestyle='--')
+        fig_pie, ax_pie = plt.subplots(figsize=(7, 6))
+        fig_pie.patch.set_facecolor('#1a1a2e')
 
-            # Colorbar
-            cbar = plt.colorbar(scatter, ax=ax)
-            cbar.set_label("Rating", color="white", fontsize=9, fontweight="bold")
-            cbar.ax.tick_params(labelcolor="white", labelsize=8)
+        # Green & Blue color palette
+        colors_palette = ["#0d7377", "#14b8a6", "#06b6d4", "#22d3ee", "#67e8f9", "#cbd5e1"]
 
-            plt.tight_layout()
-            st.pyplot(fig, use_container_width=True)
-        else:
-            st.markdown("#### 📱 Top Products by Reviews")
-            if "review_count" in df.columns:
-                top_products = df.nlargest(8, "review_count")[["title", "review_count", "rating"]].copy()
-                top_products.columns = ["Product", "Reviews", "Rating"]
-                st.dataframe(top_products, use_container_width=True, hide_index=True)
-            else:
-                st.info("Social reach data not yet available. Click refresh to load.")
+        wedges, texts, autotexts = ax_pie.pie(
+            brand_share.values,
+            labels=brand_share.index,
+            autopct='%1.1f%%',
+            colors=colors_palette[:len(brand_share)],
+            startangle=90,
+            textprops={'fontsize': 10, 'weight': 'bold'}
+        )
+
+        # Format text colors
+        for text in texts:
+            text.set_color('white')
+            text.set_fontsize(10)
+            text.set_fontweight('bold')
+
+        for autotext in autotexts:
+            autotext.set_color('white')
+            autotext.set_fontsize(9)
+            autotext.set_fontweight('bold')
+
+        plt.tight_layout()
+        st.pyplot(fig_pie, use_container_width=True)
 
     # ================================================
-    # SECTION 3: CAMPAIGN PERFORMANCE & INSIGHTS
+    # SECTION 3: TOP PRODUCTS BY REVIEWS
     # ================================================
-    if "campaign_potential" in df.columns:
-        st.markdown("---")
-        st.markdown("### 🎯 Campaign Performance & Top Opportunities")
+    st.markdown("---")
+    st.markdown("### 🌟 Top Products by Reviews")
 
-        col_top_campaigns, col_price_pos = st.columns(2)
+    col_most_reviewed, col_top_rated = st.columns(2)
 
-        with col_top_campaigns:
-            st.markdown("#### 🚀 Products with Highest Campaign Potential")
-            top_campaigns = df.nlargest(5, "campaign_potential")[
-                ["title", "brand", "campaign_potential", "social_reach_score", "sales_estimate"]
-            ].reset_index(drop=True)
-
-            display_df = top_campaigns.copy()
-            display_df.columns = ["Product", "Brand", "Potential %", "Social Score", "Est. Sales/mo"]
+    with col_most_reviewed:
+        st.markdown("#### 💬 Most Reviewed Products")
+        if "review_count" in df.columns and "rating" in df.columns:
+            most_reviewed = df.nlargest(5, "review_count")[["title", "brand", "review_count", "rating"]].reset_index(drop=True)
+            display_df = most_reviewed.copy()
+            display_df.columns = ["Product", "Brand", "Reviews", "Rating"]
             st.dataframe(display_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("Review data not available")
 
-        with col_price_pos:
-            st.markdown("#### 💰 Price Positioning Strategy")
-
-            if "price_vs_market" in df.columns:
-                price_bins = pd.cut(df["price_vs_market"], bins=5)
-                price_dist = df.groupby(price_bins, observed=True)["product_id"].count()
-
-                fig, ax = plt.subplots(figsize=(8, 4))
-                fig.patch.set_facecolor('#0a0e27')
-                ax.set_facecolor('#0a0e27')
-
-                colors = ['#c0152f', '#e67961', '#14b8a6', '#0d7377', '#134252']
-                bars = ax.bar(range(len(price_dist)), price_dist.values, color=colors[:len(price_dist)],
-                             alpha=0.8, edgecolor='white', linewidth=1.5)
-
-                for i, val in enumerate(price_dist.values):
-                    ax.text(i, val + 0.1, str(int(val)), ha='center', va='bottom',
-                           color='white', fontweight='bold', fontsize=9)
-
-                ax.set_ylabel("Product Count", color="white", fontsize=10, fontweight="bold")
-                ax.set_xlabel("Price Position vs Market Avg", color="white", fontsize=10, fontweight="bold")
-                ax.tick_params(axis='both', labelcolor="white", labelsize=8)
-                ax.set_xticklabels([f"{i}" for i in range(len(price_dist))], color="white")
-                ax.spines['top'].set_visible(False)
-                ax.spines['right'].set_visible(False)
-                ax.spines['left'].set_color('white')
-                ax.spines['bottom'].set_color('white')
-                ax.grid(axis='y', alpha=0.15, color='white', linestyle='--')
-
-                plt.tight_layout()
-                st.pyplot(fig, use_container_width=True)
+    with col_top_rated:
+        st.markdown("#### ⭐ Highest Rated Products")
+        if "rating" in df.columns and "review_count" in df.columns:
+            # Top rated with min 10 reviews for credibility
+            top_rated = df[df["review_count"] >= 10].nlargest(5, "rating")[["title", "brand", "rating", "review_count"]].reset_index(drop=True)
+            if not top_rated.empty:
+                display_df = top_rated.copy()
+                display_df.columns = ["Product", "Brand", "Rating", "Reviews"]
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
             else:
-                st.info("Price positioning data not yet available.")
+                st.info("No products with sufficient reviews")
+        else:
+            st.info("Rating data not available")
 
     # ================================================
-    # SECTION 4: PRODUCT SELECTOR & DETAILED ANALYSIS
+    # SECTION 4: DETAILED PRODUCT ANALYSIS
     # ================================================
     st.markdown("---")
     st.markdown("### 🔍 Detailed Product Analysis")
@@ -255,16 +243,6 @@ else:
         product_options = df[
             ["product_id", "title", "brand", "rating", "review_count"]
         ].drop_duplicates().reset_index(drop=True)
-
-        # Add optional columns if they exist
-        if "sales_estimate" in df.columns:
-            product_options["sales_estimate"] = df.groupby("product_id")["sales_estimate"].first()
-        if "social_reach_score" in df.columns:
-            product_options["social_reach_score"] = df.groupby("product_id")["social_reach_score"].first()
-        if "campaign_potential" in df.columns:
-            product_options["campaign_potential"] = df.groupby("product_id")["campaign_potential"].first()
-        if "price" in df.columns:
-            product_options["price"] = df.groupby("product_id")["price"].first()
 
         selected_idx = st.selectbox(
             "Select a product for detailed analysis:",
@@ -288,36 +266,14 @@ else:
             st.metric("💬 Reviews", int(selected_prod["review_count"]) if pd.notna(selected_prod["review_count"]) else 0)
 
         with col_card4:
-            if "sales_estimate" in product_options.columns and pd.notna(selected_prod.get("sales_estimate")):
-                st.metric("📈 Est. Sales", f"{int(selected_prod['sales_estimate'])} units/mo")
+            # Get search position from main df
+            search_pos = df[df["product_id"] == selected_prod["product_id"]]["search_position"].values
+            if len(search_pos) > 0:
+                st.metric("🔍 Search Position", f"#{int(search_pos[0])}")
             else:
-                st.metric("📈 Est. Sales", "N/A")
+                st.metric("🔍 Search Position", "N/A")
 
-        # Additional product insights (if data available)
-        has_insights = ("social_reach_score" in product_options.columns or 
-                       "campaign_potential" in product_options.columns or 
-                       "price" in product_options.columns)
-        
-        if has_insights:
-            col_details1, col_details2, col_details3 = st.columns(3)
-
-            with col_details1:
-                if "social_reach_score" in product_options.columns and pd.notna(selected_prod.get("social_reach_score")):
-                    st.metric("📱 Social Score", f"{int(selected_prod['social_reach_score'])}/100")
-                else:
-                    st.metric("📱 Social Score", "N/A")
-
-            with col_details2:
-                if "campaign_potential" in product_options.columns and pd.notna(selected_prod.get("campaign_potential")):
-                    st.metric("🚀 Campaign Potential", f"{int(selected_prod['campaign_potential'])}%")
-                else:
-                    st.metric("🚀 Campaign Potential", "N/A")
-
-            with col_details3:
-                if "price" in product_options.columns and pd.notna(selected_prod.get("price")):
-                    st.metric("💵 Price", f"${selected_prod['price']:.2f}")
-                else:
-                    st.metric("💵 Price", "N/A")
+        st.info("📊 **Note**: Additional data fields (estimated sales, social score, campaign potential, price) require additional API integration. See 'API Integration' section below.")
 
     else:
         st.warning("Refresh data first to select a product.")
@@ -348,13 +304,9 @@ else:
         if selected_prod is not None:
             context_prompt = (
                 f"For product '{selected_prod['title']}' (brand: {selected_prod['brand']}, "
-                f"rating: {selected_prod['rating']:.2f}, reviews: {int(selected_prod['review_count'])}"
+                f"rating: {selected_prod['rating']:.2f}, reviews: {int(selected_prod['review_count'])}), "
+                f"provide campaign strategy. User asks: {prompt}"
             )
-            if "sales_estimate" in product_options.columns and pd.notna(selected_prod.get("sales_estimate")):
-                context_prompt += f", est. sales: {int(selected_prod['sales_estimate'])} units/mo"
-            if "social_reach_score" in product_options.columns and pd.notna(selected_prod.get("social_reach_score")):
-                context_prompt += f", social score: {int(selected_prod['social_reach_score'])}/100"
-            context_prompt += f"), provide campaign strategy. User asks: {prompt}"
         else:
             context_prompt = prompt
 
@@ -380,5 +332,83 @@ else:
 
         st.session_state.messages.append({"role": "assistant", "content": answer})
 
+# ================================================
+# SECTION 6: API INTEGRATION GUIDE
+# ================================================
 st.markdown("---")
-st.caption("Data from Google Shopping API. Campaign metrics are AI-estimated proxies based on market positioning, social signals, and historical performance patterns.")
+st.markdown("### 📡 API Integration Options")
+
+with st.expander("ℹ️ Add Missing Data (Estimated Sales, Price, Social Metrics)"):
+    st.markdown("""
+    ### Available APIs for Enhanced Data
+
+    #### 1. **Product Pricing & Availability**
+    - **Amazon Product Advertising API** (Free, affiliate links required)
+      - Get product prices, availability
+      - Limited to affiliate products
+      
+    - **RealData API** (Paid - FMCG focused)
+      - Zepto, FirstCry FMCG prices
+      - Real-time inventory & pricing
+      - Starts at ~$10/month
+      
+    - **SerpAPI Enhancement** (Already using, can add more fields)
+      - Extract prices from search results
+      - No additional setup needed
+
+    #### 2. **Sales Volume Estimation**
+    - **Amazon Selling Partner API** (For sellers)
+      - Real sales metrics if you're an Amazon seller
+      - Requires seller account & credentials
+      
+    - **Synthetic Estimation** (Current approach)
+      - Based on search position + ratings + reviews
+      - Free, no API calls needed
+
+    #### 3. **Social Media Metrics**
+    - **Twitter API** (Paid - $100-$200/month)
+      - Track brand mentions & sentiment
+      - Requires approval
+      
+    - **Manual Integration** (Budget-friendly)
+      - Script to collect hashtag mentions weekly
+      - Store in database
+
+    #### 4. **Competitor Price Tracking**
+    - **Keepa API** ($15/month)
+      - Amazon price history
+      - Great for competitor tracking
+      
+    - **CamelCamelCamel** (Free)
+      - Amazon price alerts
+      - Historical data available
+
+    ### Recommendation for Your Use Case:
+
+    **Phase 1 (Current)**: Use SerpAPI for Google Shopping + synthetic estimation ✅
+
+    **Phase 2 (Next)**: Add Keepa API for Amazon competitor prices (~$15/month)
+
+    **Phase 3 (Later)**: Integrate Twitter API for brand social metrics (~$100/month)
+
+    ### To Add Keepa API:
+    ```python
+    # In agent.py, add:
+    import requests
+    
+    def get_keepa_price_history(asin):
+        url = f"https://api.keepa.com/product"
+        params = {
+            "ASIN": asin,
+            "key": KEEPA_API_KEY,
+            "stats": "90"  # Last 90 days
+        }
+        resp = requests.get(url, params=params)
+        return resp.json()
+    ```
+
+    Let me know which API you'd like to integrate! 🚀
+    """)
+
+st.markdown("---")
+st.caption("Data from Google Shopping API via SerpAPI. Charts show brand market share, product quality, and review metrics.")
