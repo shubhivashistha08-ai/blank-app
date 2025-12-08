@@ -99,7 +99,7 @@ else:
             "rating": "avg_rating"
         }).sort_values("total_sales", ascending=False).head(10)
 
-        fig, ax1 = plt.subplots(figsize=(8, 5))
+        fig, ax1 = plt.subplots(figsize=(7, 6))
         fig.patch.set_facecolor('#1a1a2e')  # Dark background
         ax1.set_facecolor('#1a1a2e')  # Dark background
 
