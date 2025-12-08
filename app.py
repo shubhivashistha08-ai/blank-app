@@ -1,3 +1,5 @@
+
+app_updated.py
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -154,8 +156,9 @@ else:
 
         lines1, labels1 = ax1.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
-        ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right',
-                  facecolor='#1a1a2e', edgecolor='white', labelcolor='white', fontsize=8)
+        ax1.legend(lines1 + lines2, labels1 + labels2, loc='lower center',
+                  bbox_to_anchor=(0.5, -0.25),
+                  facecolor='#1a1a2e', edgecolor='white', labelcolor='white', fontsize=8, ncol=2)
 
         plt.tight_layout()
         st.pyplot(fig, use_container_width=True)
@@ -272,7 +275,7 @@ else:
             else:
                 st.metric("🔍 Search Position", "N/A")
 
-        st.info("📊 **Note**: Additional data fields (estimated sales, social score, campaign potential, price) require additional API integration. See 'API Integration' section below.")
+        st.info("📊 **Note**: Additional data fields (estimated sales, social score, campaign potential, price) require additional API integration.")
 
     else:
         st.warning("Refresh data first to select a product.")
@@ -330,84 +333,6 @@ else:
                 st.markdown(answer)
 
         st.session_state.messages.append({"role": "assistant", "content": answer})
-
-# ================================================
-# SECTION 6: API INTEGRATION GUIDE
-# ================================================
-st.markdown("---")
-st.markdown("### 📡 API Integration Options")
-
-with st.expander("ℹ️ Add Missing Data (Estimated Sales, Price, Social Metrics)"):
-    st.markdown("""
-    ### Available APIs for Enhanced Data
-
-    #### 1. **Product Pricing & Availability**
-    - **Amazon Product Advertising API** (Free, affiliate links required)
-      - Get product prices, availability
-      - Limited to affiliate products
-      
-    - **RealData API** (Paid - FMCG focused)
-      - Zepto, FirstCry FMCG prices
-      - Real-time inventory & pricing
-      - Starts at ~$10/month
-      
-    - **SerpAPI Enhancement** (Already using, can add more fields)
-      - Extract prices from search results
-      - No additional setup needed
-
-    #### 2. **Sales Volume Estimation**
-    - **Amazon Selling Partner API** (For sellers)
-      - Real sales metrics if you're an Amazon seller
-      - Requires seller account & credentials
-      
-    - **Synthetic Estimation** (Current approach)
-      - Based on search position + ratings + reviews
-      - Free, no API calls needed
-
-    #### 3. **Social Media Metrics**
-    - **Twitter API** (Paid - $100-$200/month)
-      - Track brand mentions & sentiment
-      - Requires approval
-      
-    - **Manual Integration** (Budget-friendly)
-      - Script to collect hashtag mentions weekly
-      - Store in database
-
-    #### 4. **Competitor Price Tracking**
-    - **Keepa API** ($15/month)
-      - Amazon price history
-      - Great for competitor tracking
-      
-    - **CamelCamelCamel** (Free)
-      - Amazon price alerts
-      - Historical data available
-
-    ### Recommendation for Your Use Case:
-
-    **Phase 1 (Current)**: Use SerpAPI for Google Shopping + synthetic estimation ✅
-
-    **Phase 2 (Next)**: Add Keepa API for Amazon competitor prices (~$15/month)
-
-    **Phase 3 (Later)**: Integrate Twitter API for brand social metrics (~$100/month)
-
-    ### To Add Keepa API:
-    ```python
-    # In agent.py, add:
-    import requests
-    
-    def get_keepa_price_history(asin):
-        url = f"https://api.keepa.com/product"
-        params = {
-            "ASIN": asin,
-            "key": KEEPA_API_KEY,
-            "stats": "90"  # Last 90 days
-        }
-        resp = requests.get(url, params=params)
-        return resp.json()
-    ```
-
-    Let me know which API you'd like to integrate! 🚀
-    """)
 
 st.markdown("---")
 st.caption("Data from Google Shopping API via SerpAPI. Charts show brand market share, product quality, and review metrics.")
